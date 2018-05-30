@@ -26,11 +26,9 @@ for(prepare_const in 1:1){
 	pivotal_dtr=0.5;
 };rm(prepare_const);
 for(easy_func in c(1)){
-	CV_W<-function(s_square_local=0){sqrt(exp(s_square_local)-1);}
+	CV_W<-function(s_square_local=0){sqrt( exp(s_square_local) - 1  );}
 	
 	CV_W_Inverse<-function(cv_local=0.5){log(cv_local^2+1);}
-	
-	
 	
 };rm(easy_func);
 
@@ -38,47 +36,50 @@ for(easy_func in c(1)){
 ###############################################################################
 for(Wang_func_component in c(1)){
 	
-	Empherical_power_core<-function(lamb=0, delta=delta_nomial, sigma=gamma*sigma_square_true,
+	Empherical_power_core<-function(lamb=0, delta=delta_nomial, sigma=sigma_nomial,
 			sample_size=12, lambda_alg="TRUE"){
 		#	coef_loc = sqrt(n_11^{-1}+n_12^{-1});
 		#	lambda is one alg-form
-		n_local=max(as.integer(sample_size), 24);
-		n1_local=max((n_local*pilot_dtr), 12);
+		n_local=max(as.integer(sample_size*pilot_size), 6);
+		n1_local=max((n_local*pilot_dtr), 3);
+		n2_local=n_local - n1_local;
 		t_df=n_local-2;
 		
-		coef_loc=1/n1_local + 1/(n_local-n1_local);
+		coef_loc=1/n1_local + 1/n2_local;
 		
 		if(lambda_alg=="TRUE"){
 			return(integrate(function(x1){
 								a=pnorm( (U-delta)/sqrt(sigma*coef_loc/2)-
-												qt(p=1-alpha/2, df=t_df)*sqrt(x1/(gamma*t_df) )-
-												lamb*sqrt(x1/( t_df*gamma*coef_loc)) );
+												qt(p=1-alpha/2, df=t_df)*sqrt(x1/(t_df) )-
+												lamb*sqrt(x1/( t_df*coef_loc)) );
 								b=pnorm( (L-delta)/sqrt(sigma*coef_loc/2)+
-												qt(p=1-alpha/2, df=t_df)*sqrt(x1/(gamma*t_df) )+
-												lamb*sqrt(x1/( t_df*gamma*coef_loc)) );
+												qt(p=1-alpha/2, df=t_df)*sqrt(x1/(t_df) )+
+												lamb*sqrt(x1/( t_df*coef_loc)) );
 								return( (a-b)*(exp(-x1/2)*x1^(t_df/2-1)*1/( 2^(t_df/2)*gamma(t_df/2))) );
-							}, lower=sample_size/2, upper=sample_size*2) );
+							}, lower=sample_size*pilot_size/2, upper=sample_size*pilot_size*2) );
 		}
 		if(lambda_alg=="FALSE"){
 			return(integrate(function(x1){
 								a=pnorm( (U-delta-lamb)/sqrt(sigma*coef_loc/2)-
-												qt(p=1-alpha/2, df=t_df)*sqrt(x1/(gamma*t_df) ) );
+												qt(p=1-alpha/2, df=t_df)*sqrt(x1/(t_df) ) );
 								b=pnorm( (L-delta-lamb)/sqrt(sigma*coef_loc/2)+
-												qt(p=1-alpha/2, df=t_df)*sqrt(x1/(gamma*t_df) ));
+												qt(p=1-alpha/2, df=t_df)*sqrt(x1/(t_df) ));
 								return( (a-b)*(exp(-x1/2)*x1^(t_df/2-1)*1/( 2^(t_df/2)*gamma(t_df/2))) );
-							}, lower=sample_size/2, upper=sample_size*2) );
+							}, lower=sample_size*pilot_size/2, upper=sample_size*pilot_size*2) );
 		}
 	}
 	
 	P_uniroot<-function(f=function(x){return(x);}, beta_assign=beta){
 		jump_s=1;
-		N_L=2*sigma_square_true*(qnorm(1-alpha/2)+qnorm(0.5+beta/2) )^2/U^2;
-		
+		N_L=min(2*sigma_square_true*(qnorm(1-alpha/2)+qnorm(0.5+beta/2) )^2/U^2, 12);
 		temp_loc=f(N_L);
+		
+		
 		if(temp_loc>=beta_assign){
 			print("not available;too weak");
 			return(N_L);
 		}
+		
 		N_U=400.0;
 		counter=0;
 		while(jump_s>0 & counter<200){
@@ -101,12 +102,14 @@ for(Wang_func_component in c(1)){
 		n1_star=as.integer(n_star*pilot_dtr);n2_star=n_star-n1_star;
 		
 		coef=(test_my(x-2)/test_my( n_star-2 ))*sqrt((n_star-2)/(x-2));
-		lambda_algf= coef*qt(p=(2-alpha)/2, df=x-2) * sqrt( 1.0/n1+1.0/n2 ) - qt(p=(2-alpha)/2.0, df=n_star-2)*sqrt( 1.0/n1_star+1.0/n2_star);
+		lambda_algf= coef*qt(p=(2-alpha)/2, df=x-2) * sqrt( 1.0/n1+1.0/n2 ) -
+		  qt(p=(2-alpha)/2.0, df=n_star-2)*sqrt( 1.0/n1_star+1.0/n2_star);
 		return(lambda_algf);
 	}
-	lambda_alg_Wang(180)
+	lambda_alg_Wang(80)
 	
-	test_stat<-function(n1_local=10, n_local=50, delta_local=0.0, Period_local=1e-1, s_square_local=5e-1, oringinal="Yes"){
+	test_stat<-function(n1_local=10, n_local=50, delta_local=0.0,
+	                    Period_local=1e-1, s_square_local=5e-1, oringinal="Yes"){
 		n2_local=n_local-n1_local;
 		if(n2_local>4){
 			seq1_local=rnorm(n=n1_local, mean=(delta_local+Period_local)/2.0, sd=sqrt(s_square_local/2.0));
@@ -144,7 +147,8 @@ Wang_Simulation<-function(method="Wang", iter=5000, operation="not_strict"){
 			#d_L=delta_hat-sqrt(sigma_s_hat*(1.0/n1_star+1.0/n2_star))*qt((2-alpha)/2, df=n_star-2);
 			d_U=delta_hat*2-d_L;
 			
-			if( ( (d_L<U | d_U>L) & operation=="not_strict") | ( (d_U<U & d_L>L) & operation=="strict" ) | (operation=="Pass") ){
+			if( ( (d_L<U | d_U>L) & operation=="not_strict") | ( (d_U<U & d_L>L) & operation=="strict" ) | 
+			    (operation=="Pass") ){
 				X=test_stat(n1_local=n1, n_local=n, delta_local=delta_true, 
 						Period_local=Period_dif, s_square_local=sigma_square_true, oringinal = "No");
 				delta_hat=as.numeric(X[2]);sigma_s_hat=as.numeric(X[1]);
@@ -178,7 +182,8 @@ Wang_Simulation<-function(method="Wang", iter=5000, operation="not_strict"){
 			#d_L=delta_hat-sqrt(sigma_s_hat*(1.0/n1_star+1.0/n2_star))*qt((2-alpha)/2, df=n_star-2);
 			d_U=delta_hat*2-d_L;
 			
-			if( ( (d_L<U | d_U>L) & operation=="not_strict") | ( (d_U<U-lambda & d_L>L+lambda) & operation=="strict" ) | (operation=="Pass") ){
+			if( ( (d_L<U | d_U>L) & operation=="not_strict") |
+			    ( (d_U<U-lambda & d_L>L+lambda) & operation=="strict" ) | (operation=="Pass") ){
 				X=test_stat(n1_local=n1, n_local=n, delta_local=delta_true, 
 						Period_local=Period_dif, s_square_local=sigma_square_true, oringinal = "No");
 				delta_hat=as.numeric(X[2]);sigma_s_hat=as.numeric(X[1]);
@@ -212,7 +217,8 @@ Wang_method<-function(iter=5000, operations="not_strict"){
 		n1_star=as.integer(n_star*pilot_dtr);	n2_star=n_star-n1_star;
 		
 		coef=(test_my(x-2)/test_my( n_star-2 ))*sqrt((n_star-2)/(x-2));
-		lambda_algf= coef*qt(p=(2-alpha)/2, df=x-2) * sqrt(1.0/n1+1.0/n2) - qt(p=(2-alpha)/2.0, df=n_star-2)*sqrt(1.0/n1_star+1.0/n2_star);
+		lambda_algf= coef*qt(p=(2-alpha)/2, df=x-2) * 
+		  sqrt(1.0/n1+1.0/n2) - qt(p=(2-alpha)/2.0, df=n_star-2)*sqrt(1.0/n1_star+1.0/n2_star);
 		return(lambda_algf);
 	}
 	
@@ -239,16 +245,20 @@ Wang_method<-function(iter=5000, operations="not_strict"){
 				Period_local=Period_dif, s_square_local=sigma_square_true);
 		delta_hat=as.numeric(X[2]);sigma_s_hat=as.numeric(X[1]);
 		
-		d_L=delta_hat-sqrt(sigma_s_hat*(1.0/n1_Wang_star+1.0/n2_Wang_star))*qt(p=(2-alpha)/2.0, df=n_Wang_star-2);
+		d_L=delta_hat-sqrt(sigma_s_hat*(1.0/n1_Wang_star+1.0/n2_Wang_star))*
+		  qt(p=(2-alpha)/2.0, df=n_Wang_star-2);
 		d_U=2*delta_hat-d_L;
 		
 		coef=(test_my(n_Wang-2)/test_my(n_Wang_star-2))*sqrt((n_Wang_star-2)/(n_Wang-2));
 		#coef=1;	
-		lambda=(coef*qt(p=(2-alpha)/2, df=n_Wang-2)*sqrt(1.0/n1_Wang+1.0/n2_Wang)-qt(p=(2-alpha)/2.0, df=n_Wang_star-2)*sqrt(1.0/n1_Wang_star+1.0/n2_Wang_star) )*sqrt(sigma_s_hat);
+		lambda=(coef*qt(p=(2-alpha)/2, df=n_Wang-2)*sqrt(1.0/n1_Wang+1.0/n2_Wang)-
+		          qt(p=(2-alpha)/2.0, df=n_Wang_star-2)*sqrt(1.0/n1_Wang_star+1.0/n2_Wang_star) )*
+		  sqrt(sigma_s_hat);
 		
 		if(lambda>0){print(index);}
 		if(index==2){print(lambda);}
-		if( ( (d_L<U-lambda | d_U>L+lambda) & operations=="not_strict") | ( (d_U<U-lambda | d_L>L+lambda) & operations=="strict" ) ){
+		if( ( (d_L<U-lambda | d_U>L+lambda) & operations=="not_strict") |
+		    ( (d_U<U-lambda | d_L>L+lambda) & operations=="strict" ) ){
 			X=test_stat(n1_local=n1_Wang, n_local=n_Wang, delta_local=delta_true,
 					Period_local=Period_dif, s_square_local=sigma_square_true);
 			delta_hat=as.numeric(X[2]);	sigma_s_hat=as.numeric(X[1]);
@@ -275,13 +285,15 @@ Wang_method_old<-function(iter=5000, operations="not_strict"){
 		
 		#coef=(test_my(x-2)/test_my( n_star-2 ))*sqrt((n_star-2)/(x-2));
 		coef=1;
-		lambda_algf= coef*qt(p=(2-alpha)/2, df=x-2) * sqrt(1.0/n1+1.0/n2) - qt(p=(2-alpha)/2.0, df=n_star-2)*sqrt(1.0/n1_star+1.0/n2_star);
+		lambda_algf= coef*qt(p=(2-alpha)/2, df=x-2) * sqrt(1.0/n1+1.0/n2) -
+		  qt(p=(2-alpha)/2.0, df=n_star-2)*sqrt(1.0/n1_star+1.0/n2_star);
 		return(lambda_algf);
 	}
 	
 	Empherical_power_size_loc<-function(x){
 		lambda_locs=lambda_alg_Wang_loc(x);
-		return( (Empherical_power_core(lamb = lambda_locs, sample_size = as.integer(x*pilot_size) ) )$value );
+		return( (Empherical_power_core(lamb = lambda_locs, sample_size = as.integer(
+		  x*pilot_size) ) )$value );
 	}
 	
 	n0=P_uniroot(f=Empherical_power_size_loc, beta_loc = beta);
@@ -305,15 +317,19 @@ Wang_method_old<-function(iter=5000, operations="not_strict"){
 				Period_local=Period_dif, s_square_local=sigma_square_true);
 		delta_hat=as.numeric(X[2]);sigma_s_hat=as.numeric(X[1]);
 		
-		d_L=delta_hat-sqrt(sigma_s_hat*(1.0/n1_Wang_star+1.0/n2_Wang_star))*qt(p=(2-alpha)/2.0, df=n_Wang_star-2);
+		d_L=delta_hat-sqrt(sigma_s_hat*(1.0/n1_Wang_star+1.0/n2_Wang_star))*
+		  qt(p=(2-alpha)/2.0, df=n_Wang_star-2);
 		d_U=2*delta_hat-d_L;
 		
 		#coef=(test_my(n_Wang-2)/test_my(n_Wang_star-2))*sqrt((n_Wang_star-2)/(n_Wang-2));
 		coef=1;	
-		lambda=(coef*qt(p=(2-alpha)/2, df=n_Wang-2)*sqrt(1.0/n1_Wang+1.0/n2_Wang)-qt(p=(2-alpha)/2.0, df=n_Wang_star-2)*sqrt(1.0/n1_Wang_star+1.0/n2_Wang_star) )*sqrt(sigma_s_hat);
+		lambda=(coef*qt(p=(2-alpha)/2, df=n_Wang-2)*sqrt(1.0/n1_Wang+1.0/n2_Wang)-
+		          qt(p=(2-alpha)/2.0, df=n_Wang_star-2)*sqrt(1.0/n1_Wang_star+1.0/n2_Wang_star) )*
+		  sqrt(sigma_s_hat);
 		#rm(X, delta_hat, sigma_s_hat);
 		if(lambda>0){print(index);}
-		if( ( (d_L<U-lambda | d_U>L+lambda) & operations=="not_strict") | ( (d_U<U-lambda & d_L>L+lambda) & operations=="strict" ) ){
+		if( ( (d_L<U-lambda | d_U>L+lambda) & operations=="not_strict") |
+		    ( (d_U<U-lambda & d_L>L+lambda) & operations=="strict" ) ){
 			X=test_stat(n1_local=n1_Wang, n_local=n_Wang, delta_local=delta_true,
 					Period_local=Period_dif, s_square_local=sigma_square_true);
 			delta_hat=as.numeric(X[2]);sigma_s_hat=as.numeric(X[1]);
@@ -343,13 +359,15 @@ Wang_method_pool<-function(iter=5000, operations="not_strict"){
 		n1_star=as.integer(n_star*pilot_dtr);	n2_star=n_star-n1_star;
 		
 		coef=(test_my(x-2)/test_my( n_star-2 ))*sqrt((n_star-2)/(x-2));
-		lambda_algf= coef*qt(p=(2-alpha)/2, df=x-2) * sqrt(1.0/n1+1.0/n2) - qt(p=(2-alpha)/2.0, df=n_star-2)*sqrt(1.0/n1_star+1.0/n2_star);
+		lambda_algf= coef*qt(p=(2-alpha)/2, df=x-2) * sqrt(1.0/n1+1.0/n2) -
+		  qt(p=(2-alpha)/2.0, df=n_star-2)*sqrt(1.0/n1_star+1.0/n2_star);
 		return(lambda_algf);
 	}
 	
 	Empherical_power_size_loc<-function(x){
 		lambda_locs=lambda_alg_Wang_loc(x);
-		return( (Empherical_power_core(lamb = lambda_locs, sample_size = as.integer(x*pilot_size) ) )$value );
+		return( (Empherical_power_core(lamb = lambda_locs, sample_size = as.integer(
+		  x*pilot_size) ) )$value );
 	}
 	
 	n0=P_uniroot(f=Empherical_power_size_loc, beta_loc = beta);
@@ -378,25 +396,31 @@ Wang_method_pool<-function(iter=5000, operations="not_strict"){
 		delta_hat=mean(seq1)+mean(seq2);
 		#	test-statistics
 		
-		d_L=delta_hat-sqrt(sigma_s_hat*(1.0/n1_Wang_star + 1.0/n2_Wang_star))*qt(p=(2-alpha)/2.0, df=n_Wang_star-2);
+		d_L=delta_hat-sqrt(sigma_s_hat*(1.0/n1_Wang_star + 1.0/n2_Wang_star))*
+		  qt(p=(2-alpha)/2.0, df=n_Wang_star-2);
 		d_U=2*delta_hat-d_L;
 		
 		coef=test_my(n_Wang-2)/test_my(n_Wang_star-2);
 		#coef=1;
-		lambda=(coef*qt(p=(2-alpha)/2, df=n_Wang-2)*sqrt(1.0/n1_Wang+1.0/n2_Wang)-qt(p=(2-alpha)/2.0, df=n_Wang_star-2)*sqrt(1.0/n1_Wang_star+1.0/n2_Wang_star) )*sqrt(sigma_s_hat);
+		lambda=(coef*qt(p=(2-alpha)/2, df=n_Wang-2)*sqrt(1.0/n1_Wang+1.0/n2_Wang)-
+		          qt(p=(2-alpha)/2.0, df=n_Wang_star-2)*sqrt(1.0/n1_Wang_star+1.0/n2_Wang_star) )*
+		  sqrt(sigma_s_hat);
 		#rm(X, delta_hat, sigma_s_hat);
 		if(lambda>=0){print(index);}
 		
-		if( ( (d_L<U-lambda | d_U>L+lambda) & operations=="not_strict") | ( (d_U<U-lambda & d_L>L+lambda) & operations=="strict" ) ){
+		if( ( (d_L<U-lambda | d_U>L+lambda) & operations=="not_strict") | (
+		  (d_U<U-lambda & d_L>L+lambda) & operations=="strict" ) ){
 			seq1=c(seq1, rnorm(n=n1_Wang, mean=(delta_true+Period_dif)/2.0, sd=sqrt(sigma_square_true/2.0)) );
 			seq2=c(seq2, rnorm(n=n2_Wang, mean=(delta_true-Period_dif)/2.0, sd=sqrt(sigma_square_true/2.0)) );
 			
 			#	random-samples
 			
-			sigma_s_hat=( var(seq1)*(n1_Wang_star+n1_Wang-1)+var(seq2)*(n2_Wang_star+n2_Wang-1))/(n_Wang+n_Wang_star-2);
+			sigma_s_hat=( var(seq1)*(n1_Wang_star+n1_Wang-1)+var(seq2)*(n2_Wang_star+n2_Wang-1))/
+			  (n_Wang+n_Wang_star-2);
 			delta_hat=mean(seq1)+mean(seq2);
 			
-			d_L=delta_hat-sqrt(sigma_s_hat*(1.0/(n1_Wang+n1_Wang_star)+1.0/(n2_Wang_star+n2_Wang) ))*qt((2-alpha)/2, df=n_Wang+n_Wang_star-2);
+			d_L=delta_hat-sqrt(sigma_s_hat*(1.0/(n1_Wang+n1_Wang_star)+1.0/(n2_Wang_star+n2_Wang) ))*
+			  qt((2-alpha)/2, df=n_Wang+n_Wang_star-2);
 			d_U=2*delta_hat-d_L;
 			if(d_L>L & d_U<U){
 				true_counter=true_counter+1;
@@ -462,7 +486,8 @@ for(modify_procedure in c(1)){
 	sigma_square_true=CV_W_Inverse(change_CV);
 	
 	Empherical_power_size_D<-function(x){
-		return( (Empherical_power_core(lamb = lambda, sample_size = as.integer(x*pilot_size) ) )$value - 0.80);
+		return( (Empherical_power_core(lamb = lambda, sample_size = as.integer(
+		  x*pilot_size) ) )$value - 0.80);
 	}
 	
 	
