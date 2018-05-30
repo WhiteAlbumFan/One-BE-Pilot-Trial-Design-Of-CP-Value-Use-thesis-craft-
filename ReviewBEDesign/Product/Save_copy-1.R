@@ -968,44 +968,6 @@ n_star
 
 
 
-CP50<-function(t=0.5, beta_loc=beta, iter=5000, original_sample_size=120){
-	iter_inside=max(as.integer(iter), 5000);
-	origi=max(as.integer(original_sample_size), 60);
-	
-	n_star_loc=as.integer(as.integer(origi*t)/2)*2;
-	n1_star_loc=n_star_loc/2;
-	n2_star_loc=n_star_loc-n1_star_loc;
-	
-	seq1=rnorm(n=n1_star_loc, mean=(delta_true+Period_dif)/2.0, sd=sqrt(sigma_square_true/2.0));
-	seq2=rnorm(n=n2_star_loc, mean=(delta_true-Period_dif)/2.0, sd=sqrt(sigma_square_true/2.0));
-	
-	delta_hat=mean(seq1)+mean(seq2);
-	CP=pnorm(delta_hat*sqrt(n1_star_loc/(t-t*t)) - qnorm(1-alpha/2) );
-	
-	
-	
-	
-	
-	return(1);
-}
-
-CP_N0<-function(N_loc=120, alpha_loc=0.10, t=0.5, delta_hat_loc=1){
-	return(pnorm(delta_hat_loc*sqrt(N_loc/(t-t*t))-qnorm(1-alpha_loc/2)/sqrt(1-t)  ) );
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 death_list=as.character(ls() );death_list_1=death_list[1]
 for(name in death_list[2:length(death_list)]){
 	death_list_1<-paste(death_list_1, name, sep=",")
